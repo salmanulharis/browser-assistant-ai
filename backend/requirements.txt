@@ -1,0 +1,14 @@
+# Runtime dependencies (pinned; resolved together on Python 3.12, Windows 11)
+fastapi==0.162.0
+uvicorn==0.54.0
+pydantic==2.14.2
+pydantic-settings==2.16.2
+SQLAlchemy==2.1.8
+chromadb==1.5.9
+httpx==0.28.1
+pymupdf==2.1
+python-docx==1.2.0
+python-pptx==1.0.2
+openpyxl==3.1.5
+beautifulsoup4==4.15.0
+python-multipart==0.0.33
