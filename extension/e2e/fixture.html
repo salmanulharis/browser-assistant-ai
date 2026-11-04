@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Acme Careers – Apply</title></head>
+<body>
+  <h1>Senior Data Engineer</h1>
+  <p>Acme builds logistics software. This role owns the streaming data platform and reports to the head of data.</p>
+  <form id="apply" aria-label="Application form">
+    <p>All fields marked * are required.</p>
+    <label for="name">Full name *</label><input id="name" name="full_name" required>
+    <label for="years">Years of experience</label><input id="years" name="years">
+    <label for="pw">Password</label><input id="pw" name="password" type="password">
+    <label for="why">Why Acme?</label><textarea id="why" name="why"></textarea>
+    <button type="submit" id="submit">Submit application</button>
+  </form>
+  <script>
+    window.__submitted = false;
+    document.getElementById('apply').addEventListener('submit', (e) => { e.preventDefault(); window.__submitted = true; });
+  </script>
+</body>
+</html>

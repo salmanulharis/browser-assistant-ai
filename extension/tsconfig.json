@@ -1,0 +1,11 @@
+{
+  "extends": "./.wxt/tsconfig.json",
+  "compilerOptions": {
+    "strict": true,
+    "noUncheckedIndexedAccess": false,
+    "noFallthroughCasesInSwitch": true,
+    "jsx": "react-jsx",
+    "types": ["chrome", "vitest/globals"]
+  },
+  "exclude": [".output", "node_modules", "e2e", "vitest.config.ts", "playwright.config.ts"]
+}
