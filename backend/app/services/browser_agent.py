@@ -118,6 +118,10 @@ def apply_policy(plan: ActionPlan, elements: list[ElementInfo], page_url: str) -
                 continue
             if a.target is not None and not a.target.label:
                 a.target.label = el.label or el.text or el.name or el.placeholder
+        if el is not None and a.type in WRITES and _is_button_like(el):
+            name = truncate(el.label or el.text or el.name or el.type or el.tag, 60)
+            block(a, f"'{name}' is a button or link, not a field – a value can't be entered into it.")
+            continue
         sens = element_sensitivity(el) if el else None
         if a.type in WRITES | {"read"} and sens:
             block(a, f"Sensitive field ({sens}) – never read or filled automatically.")
@@ -242,7 +246,24 @@ _CLICK_INTENT = re.compile(
 )
 
 
+# <input> types that are buttons (or uploads), not editable fields. Their ``value`` is the button
+# caption, so "filling" one would overwrite the button's text.
+BUTTON_INPUT_TYPES = frozenset({"submit", "button", "reset", "image", "file"})
+_BUTTON_ROLES = frozenset({"button", "link", "menuitem", "tab"})
+
+
+def _is_button_like(e: ElementInfo) -> bool:
+    """Buttons and links: they can be clicked but never receive a value."""
+    if e.tag == "input":
+        return e.type.lower() in BUTTON_INPUT_TYPES
+    if e.role in FIELD_ROLES or e.type == "contenteditable":
+        return False  # e.g. <button role="switch"> or <button role="combobox">
+    return e.tag in {"button", "a"} or e.role in _BUTTON_ROLES
+
+
 def _is_field(e: ElementInfo) -> bool:
+    if _is_button_like(e):
+        return False
     return e.tag in FIELD_TAGS or e.role in FIELD_ROLES or e.type == "contenteditable"
 
 

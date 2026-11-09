@@ -117,6 +117,35 @@ describe('form detection', () => {
     expect(document.querySelector<HTMLInputElement>('#n')!.value).toBe('Asha Rao');
   });
 
+  it('never writes a value into a button (its caption must survive)', () => {
+    // Regression: filling "India" into <input type="submit"> replaced the button's text.
+    page(`<form><select id="country"><option value="">Choose</option><option value="in">India</option></select>
+      <input type="submit" id="go" name="submit" value="Place order"><button id="save">Save</button>
+      <button id="dark" type="button" role="switch" aria-checked="false">Dark mode</button></form>`);
+    const dark = document.querySelector('#dark')!;
+    dark.addEventListener('click', () => dark.setAttribute('aria-checked', String(dark.getAttribute('aria-checked') !== 'true')));
+    const go = document.querySelector<HTMLInputElement>('#go')!;
+    const act =(ref: string, value: string, type: 'fill' | 'select' = 'fill') =>
+      executeAction({ type, target: { ref }, value, reason: '', requires_confirmation: false });
+    expect(act(refFor(go), 'India').status).toBe('blocked');
+    expect(act(refFor(document.querySelector('#save')!), 'India').status).toBe('blocked');
+    expect(() => setFieldValue(go, 'India')).toThrow(/button/);
+    expect(go.value).toBe('Place order');
+    expect(document.querySelector('#save')!.textContent).toBe('Save');
+    // Real fields and button-based toggles still work.
+    expect(act(refFor(document.querySelector('#country')!), 'India', 'select').status).toBe('success');
+    expect(document.querySelector<HTMLSelectElement>('#country')!.value).toBe('in');
+    expect(act(refFor(document.querySelector('#dark')!), 'true').status).toBe('success');
+    expect(document.querySelector('#dark')!.getAttribute('aria-checked')).toBe('true');
+
+    const els = interactiveElements();
+    const byId = (id: string) => els.find((e) => e.ref === refFor(document.querySelector(`#${id}`)!))!;
+    const policy = (ref: string) => localPolicy({ type: 'fill', target: { ref }, value: 'India', reason: '', requires_confirmation: false }, byId(ref), 'https://shop.example/');
+    expect(policy('go')).toMatch(/button/);
+    expect(policy('save')).toMatch(/button/);
+    expect(localPolicy({ type: 'select', target: { ref: 'country' }, value: 'India', reason: '', requires_confirmation: false }, byId('country'), 'https://shop.example/')).toBeNull();
+  });
+
   it('detects target changes between approval and execution', () => {
     const el = document.querySelector('#n')!;
     const ref = refFor(el);

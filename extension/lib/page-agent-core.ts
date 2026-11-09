@@ -381,6 +381,19 @@ function isAriaToggle(el: Element): boolean {
   return (role === 'checkbox' || role === 'switch') && el.tagName !== 'INPUT';
 }
 
+/**
+ * Buttons and links: never a value target. For <input type="submit|button|reset|image"> the
+ * `value` property IS the visible caption, so writing to it would replace the button's text.
+ * Elements acting as toggles or dropdowns (e.g. <button role="switch">) are not buttons here.
+ */
+export function isButtonElement(el: Element): boolean {
+  const tag = el.tagName.toLowerCase();
+  if (tag === 'input') return SKIP_INPUT_TYPES.has(((el as HTMLInputElement).type || 'text').toLowerCase()) && (el as HTMLInputElement).type !== 'hidden';
+  if (isAriaToggle(el) || isCustomCombobox(el) || (el as HTMLElement).isContentEditable) return false;
+  if (['textbox', 'searchbox', 'radio', 'spinbutton'].includes(el.getAttribute('role') ?? '')) return false;
+  return tag === 'button' || tag === 'a' || ['button', 'link', 'menuitem', 'tab'].includes(el.getAttribute('role') ?? '');
+}
+
 /** True when the element is a checkbox (native or ARIA). */
 export function isCheckboxLike(el: Element): boolean {
   return (el.tagName === 'INPUT' && (el as HTMLInputElement).type === 'checkbox') || isAriaToggle(el);
@@ -395,6 +408,7 @@ export function isCheckboxLike(el: Element): boolean {
 export function setFieldValue(el: Element, value: string): void {
   const view = el.ownerDocument.defaultView as NativeView | null;
   if (!view) throw new Error('No window');
+  if (isButtonElement(el)) throw new Error('This is a button or link, not an editable field');
 
   if (el instanceof view.HTMLSelectElement) {
     const enabled = optionList(el).filter((o) => !o.disabled);
@@ -573,6 +587,9 @@ function resolveTarget(action: PlannedAction, expected?: Fingerprint): { el: Ele
 
 /** Safety checks shared by every write (fill/type/select); returns a refusal or null. */
 function writeRefusal(el: Element, value: string, sensitive: string | null): ExecutionResult | null {
+  if (isButtonElement(el)) {
+    return { status: 'blocked', message: 'Refused: this is a button or link, not a field – its text would be overwritten.' };
+  }
   if (sensitive) return { status: 'blocked', message: `Refused: ${sensitive}. Fill it yourself.` };
   const bad = sensitiveValueReason(value);
   if (bad) return { status: 'blocked', message: `Refused: value looks like a ${bad}.` };

@@ -17,12 +17,25 @@ export interface ReviewedAction {
   localBlock?: string;
 }
 
+const BUTTON_INPUT_TYPES = ['submit', 'button', 'reset', 'image', 'file'];
+const FIELD_ROLES = ['textbox', 'searchbox', 'combobox', 'listbox', 'checkbox', 'radio', 'switch', 'spinbutton'];
+
+/** Buttons and links can be clicked but never receive a value (an input's value is its caption). */
+export function isButtonLike(el: ElementInfo): boolean {
+  if (el.tag === 'input') return BUTTON_INPUT_TYPES.includes(el.type.toLowerCase());
+  if (FIELD_ROLES.includes(el.role)) return false; // e.g. <button role="switch">
+  return el.tag === 'button' || el.tag === 'a' || ['button', 'link', 'menuitem', 'tab'].includes(el.role);
+}
+
 /** Local policy – independent of the backend's, so a compromised plan is still contained. */
 export function localPolicy(action: PlannedAction, el: ElementInfo | undefined, pageUrl: string): string | null {
   const parsed = PlannedActionSchema.safeParse(action);
   if (!parsed.success) return 'Action does not match the allowed schema.';
   const needsTarget = ['click', 'type', 'fill', 'select', 'find', 'read', 'highlight'].includes(action.type);
   if (needsTarget && !el) return 'Target element is not on the page.';
+  if (['type', 'fill', 'select'].includes(action.type) && el && isButtonLike(el)) {
+    return 'This is a button or link, not a field – a value can’t be entered into it.';
+  }
   if (['type', 'fill', 'select', 'read'].includes(action.type) && el?.sensitive) return `Sensitive field (${el.sensitive}).`;
   if (['type', 'fill'].includes(action.type)) {
     const bad = sensitiveValueReason(action.value ?? '');

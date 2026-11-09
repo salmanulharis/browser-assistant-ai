@@ -124,6 +124,31 @@ class TestPolicyFieldTypes:
         _, blocked = self._run([{"type": "select", "target": {"ref": "p"}, "value": "x"}], [plain])
         assert "no options" in blocked[0]["reason"]
 
+    def test_values_are_never_written_into_buttons(self) -> None:
+        # Regression: a country value aimed at <input type="submit"> replaced the button's caption.
+        country = _el("c", tag="select", label="Country", options=COUNTRIES)
+        submit_input = _el("s", type="submit", name="submit", label="Place order")
+        button = _el("b", tag="button", type="submit", text="Save")
+        link = _el("l", tag="a", text="Help", href="https://shop.example/help")
+        switch = _el("sw", tag="button", type="button", role="switch", label="Dark mode", checked=False)
+        acts, blocked = self._run([
+            {"type": "select", "target": {"ref": "c"}, "value": "India"},
+            {"type": "fill", "target": {"ref": "s"}, "value": "India"},
+            {"type": "type", "target": {"ref": "b"}, "value": "India"},
+            {"type": "select", "target": {"ref": "l"}, "value": "India"},
+            {"type": "fill", "target": {"ref": "sw"}, "value": "on"},
+        ], [country, submit_input, button, link, switch])
+        assert len(blocked) == 3 and all("button or link" in b["reason"] for b in blocked)
+        assert [(a.target.ref, a.value) for a in acts if a.target] == [("c", "IN"), ("sw", "true")]
+
+    def test_button_inputs_are_not_offered_as_fields(self) -> None:
+        from app.services.browser_agent import _is_field, select_elements
+
+        submit_input = _el("s", type="submit", name="submit")
+        country = _el("c", tag="select", label="Country", options=COUNTRIES)
+        assert not _is_field(submit_input) and _is_field(country)
+        assert [e.ref for e in select_elements("set the country to India", [country, submit_input])] == ["c"]
+
     def test_typed_inputs_are_normalised_for_review(self) -> None:
         dob = _el("d", type="date", label="Date of birth")
         years = _el("y", type="number", label="Years")
